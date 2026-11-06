@@ -7,8 +7,9 @@ const envAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const fallbackUrl = "https://placeholder-project.supabase.co";
 const fallbackKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.placeholder";
 
-const url = envUrl && envUrl.startsWith("http") ? envUrl : fallbackUrl;
-const anonKey = envAnonKey && envAnonKey.length > 20 ? envAnonKey : fallbackKey;
+const rawUrl = envUrl && envUrl.startsWith("http") ? envUrl.trim() : fallbackUrl;
+const url = rawUrl.replace(/\/rest\/v1\/?$/, "").replace(/\/$/, "");
+const anonKey = envAnonKey && envAnonKey.length > 20 ? envAnonKey.trim() : fallbackKey;
 
 export const supabase = createClient(url, anonKey, {
   auth: {
