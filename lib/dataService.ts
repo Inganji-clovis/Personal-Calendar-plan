@@ -170,7 +170,8 @@ export async function persistInsert<T extends Record<string, any>>(
 ): Promise<{ success: boolean; data?: any; error?: string }> {
   if (isSupabaseConfigured()) {
     try {
-      const { data, error } = await (supabase.from(table as any) as any).insert(record).select();
+      const client = supabase.from(table as any) as any;
+      const { data, error } = await client.insert(record).select();
       if (!error) {
         return { success: true, data: data?.[0] };
       }
@@ -182,7 +183,7 @@ export async function persistInsert<T extends Record<string, any>>(
         delete cleanRecord.progress;
         delete cleanRecord.category;
         delete cleanRecord.lab_status;
-        const retry = await (supabase.from(table as any) as any).insert(cleanRecord).select();
+        const retry = await client.insert(cleanRecord).select();
         if (!retry.error) return { success: true, data: retry.data?.[0] };
       }
       if (error.code === "42P01") {
@@ -212,14 +213,15 @@ export async function persistUpdate<T extends Record<string, any>>(
 ): Promise<{ success: boolean; error?: string }> {
   if (isSupabaseConfigured() && !id.startsWith("local-")) {
     try {
-      const { error } = await (supabase.from(table as any) as any).update(updates).eq("id", id);
+      const client = supabase.from(table as any) as any;
+      const { error } = await client.update(updates).eq("id", id);
       if (error) {
         if (error.code === "42703") {
           const cleanUpdates = { ...updates };
           delete cleanUpdates.focus_area;
           delete cleanUpdates.project_id;
           delete cleanUpdates.progress;
-          const retry = await (supabase.from(table as any) as any).update(cleanUpdates).eq("id", id);
+          const retry = await client.update(cleanUpdates).eq("id", id);
           if (!retry.error) return { success: true };
         }
         if (error.code === "42P01") {
@@ -246,7 +248,8 @@ export async function persistDelete(
 ): Promise<{ success: boolean; error?: string }> {
   if (isSupabaseConfigured() && !id.startsWith("local-")) {
     try {
-      const { error } = await (supabase.from(table as any) as any).delete().eq("id", id);
+      const client = supabase.from(table as any) as any;
+      const { error } = await client.delete().eq("id", id);
       if (error && error.code !== "42P01") {
         return { success: false, error: error.message };
       }

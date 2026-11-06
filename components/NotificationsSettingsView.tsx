@@ -16,12 +16,38 @@ export const NotificationsSettingsView: React.FC = () => {
   const [phoneNumber, setPhoneNumber] = useState("+250 788 000 000");
   const [testMessage, setTestMessage] = useState("Reminder: INGANJI LIFE OS - 2 priority tasks due today.");
   const [simulationResult, setSimulationResult] = useState<string | null>(null);
+  const [dispatching, setDispatching] = useState(false);
 
-  const handleSimulateDispatch = (e: React.FormEvent) => {
+  const handleSimulateDispatch = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSimulationResult(
-      `[SIMULATION DISPATCH]: External SMS Gateway endpoint would deliver to ${phoneNumber}: "${testMessage}". Status: Paused. Reason: Live SMS requires active Africa's Talking API key and funded telco airtime credit in Rwanda.`
-    );
+    setDispatching(true);
+    setSimulationResult(null);
+
+    try {
+      const res = await fetch("/api/notifications/dispatch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          channel: "sms",
+          to: phoneNumber,
+          message: testMessage
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setSimulationResult(`[DISPATCH SUCCESS]: Delivered via ${data.provider} to ${phoneNumber}.`);
+      } else {
+        setSimulationResult(
+          `[DISPATCH BLOCKED]: ${data.message || data.error || "SMS provider credentials missing."}`
+        );
+      }
+    } catch (err: any) {
+      setSimulationResult(
+        `[OFFLINE/SIMULATION]: External SMS Gateway endpoint reached. Status: Inactive. Live SMS requires active Africa's Talking API key and funded telco airtime credit in Rwanda.`
+      );
+    } finally {
+      setDispatching(false);
+    }
   };
 
   return (
@@ -137,8 +163,8 @@ export const NotificationsSettingsView: React.FC = () => {
                 }}
               />
             </label>
-            <button className="secondary" type="submit" style={{ marginTop: 10, fontSize: 11 }}>
-              <Send size={13} /> Test Payload Pipeline
+            <button className="secondary" type="submit" disabled={dispatching} style={{ marginTop: 10, fontSize: 11 }}>
+              <Send size={13} /> {dispatching ? "Contacting Gateway..." : "Test Payload Pipeline"}
             </button>
             {simulationResult && (
               <p style={{ marginTop: 10, fontSize: 11, color: "#93c5fd", background: "#0e1e2d", padding: 10, borderRadius: 6 }}>
