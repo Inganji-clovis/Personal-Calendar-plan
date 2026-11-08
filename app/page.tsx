@@ -135,9 +135,13 @@ export default function Home() {
     }
 
     if (authMode === "signup") {
+      const redirectOrigin = typeof window !== "undefined" ? window.location.origin : undefined;
       const { data, error } = await supabase.auth.signUp({
         email: authEmail,
-        password: authPassword
+        password: authPassword,
+        options: {
+          emailRedirectTo: redirectOrigin
+        }
       });
       if (error) {
         setAuthError(error.message);
