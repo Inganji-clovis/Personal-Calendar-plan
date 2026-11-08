@@ -12,7 +12,10 @@ import type {
   Goal,
   CalendarEvent,
   AcademicModule,
-  NotificationItem
+  DailyScheduleItem,
+  PracticalLab,
+  ResourceItem,
+  SessionType
 } from "./supabase";
 
 export const formatRWF = (amount: number): string => {
@@ -56,10 +59,130 @@ export interface AppStateData {
   goals: Goal[];
   calendarEvents: CalendarEvent[];
   academicModules: AcademicModule[];
+  sessionsSchedule: DailyScheduleItem[];
+  practicalLabs: PracticalLab[];
+  resourceLibrary: ResourceItem[];
   extendedTablesAvailable: boolean;
 }
 
+/**
+ * Generates default recurring schedule blocks for a given date based on Inganji's known commitments:
+ * - Mon-Fri:
+ *   - 08:30 - 09:00: Morning Commute to Studio
+ *   - 09:00 - 17:00: Iwacu Studio Session (Graphic design, printing & UV/Laser, video/photo)
+ *   - 17:00 - 21:00: University of Kigali Session (IT Degree courses & academic labs)
+ *   - 21:00 - 22:20: Commute Home
+ *   - 22:20 - 00:00: Home Session (Personal IT Roadmap & Practical Labs)
+ * - Saturday:
+ *   - 09:00 - 17:00: Work commitment
+ *   - 18:00 - 22:00: Home Session (Coding & self-development)
+ * - Sunday:
+ *   - 09:00 - 17:00: Iwacu Studio Session
+ *   - 18:00 - 22:00: Home Session (Weekly review & revision)
+ */
+export function generateDefaultScheduleForDate(dateStr: string): DailyScheduleItem[] {
+  const dateObj = new Date(dateStr);
+  const dayOfWeek = dateObj.getDay(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
+
+  if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+    // Weekday: Mon-Fri
+    return [
+      {
+        id: `default-${dateStr}-studio`,
+        session_type: "studio",
+        title: "Iwacu Studio: Graphic Design & Production Operations",
+        start_time: "09:00",
+        end_time: "17:00",
+        scheduled_date: dateStr,
+        why_it_matters: "Client deliverables, UV/Laser machine operation, graphic printing & visual production.",
+        status: "scheduled",
+        priority: "high",
+        notes: "Departure from home ~08:30 depending on traffic."
+      },
+      {
+        id: `default-${dateStr}-uok`,
+        session_type: "university",
+        title: "University of Kigali: Lectures & Academic Timetable",
+        start_time: "17:00",
+        end_time: "21:00",
+        scheduled_date: dateStr,
+        why_it_matters: "IT Degree curriculum, course lectures, assignments & exam preparation.",
+        status: "scheduled",
+        priority: "urgent",
+        notes: "Direct transit from Studio to campus."
+      },
+      {
+        id: `default-${dateStr}-home`,
+        session_type: "home",
+        title: "Home Session: Personal IT Roadmap & Practical Lab",
+        start_time: "22:20",
+        end_time: "23:59",
+        scheduled_date: dateStr,
+        why_it_matters: "Intensive 6-month IT skills mastery, code exercises, technical labs & revision.",
+        status: "scheduled",
+        priority: "high",
+        notes: "Arrival home ~22:20. Focused learning session."
+      }
+    ];
+  } else if (dayOfWeek === 6) {
+    // Saturday: Separate work commitment
+    return [
+      {
+        id: `default-${dateStr}-sat-work`,
+        session_type: "studio",
+        title: "Saturday Work Commitment",
+        start_time: "09:00",
+        end_time: "17:00",
+        scheduled_date: dateStr,
+        why_it_matters: "Professional work obligations and field assignments.",
+        status: "scheduled",
+        priority: "high"
+      },
+      {
+        id: `default-${dateStr}-sat-home`,
+        session_type: "home",
+        title: "Home Session: Software Projects & IT Labs",
+        start_time: "18:30",
+        end_time: "22:30",
+        scheduled_date: dateStr,
+        why_it_matters: "Full-stack development, server configuration & portfolio projects.",
+        status: "scheduled",
+        priority: "medium"
+      }
+    ];
+  } else {
+    // Sunday: Iwacu Studio + Home Review
+    return [
+      {
+        id: `default-${dateStr}-sun-studio`,
+        session_type: "studio",
+        title: "Iwacu Studio: Production & Creative Work",
+        start_time: "09:00",
+        end_time: "17:00",
+        scheduled_date: dateStr,
+        why_it_matters: "Weekend creative projects, photography/video editing and equipment prep.",
+        status: "scheduled",
+        priority: "high"
+      },
+      {
+        id: `default-${dateStr}-sun-home`,
+        session_type: "home",
+        title: "Home Session: Weekly Review, Budget & Pacing",
+        start_time: "18:30",
+        end_time: "21:30",
+        scheduled_date: dateStr,
+        why_it_matters: "Weekly audit, financial ledger review, study planning for upcoming week.",
+        status: "scheduled",
+        priority: "medium"
+      }
+    ];
+  }
+}
+
 export async function fetchAllUserData(): Promise<AppStateData> {
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const defaultSchedule = generateDefaultScheduleForDate(todayStr);
+
   const result: AppStateData = {
     tasks: [],
     projects: [],
@@ -73,6 +196,9 @@ export async function fetchAllUserData(): Promise<AppStateData> {
     goals: [],
     calendarEvents: [],
     academicModules: [],
+    sessionsSchedule: defaultSchedule,
+    practicalLabs: [],
+    resourceLibrary: [],
     extendedTablesAvailable: false
   };
 
@@ -91,6 +217,9 @@ export async function fetchAllUserData(): Promise<AppStateData> {
       goals: getLocal("goals", []),
       calendarEvents: getLocal("calendarEvents", []),
       academicModules: getLocal("academicModules", []),
+      sessionsSchedule: getLocal("sessionsSchedule", defaultSchedule),
+      practicalLabs: getLocal("practicalLabs", []),
+      resourceLibrary: getLocal("resourceLibrary", []),
       extendedTablesAvailable: false
     };
   }
@@ -110,7 +239,7 @@ export async function fetchAllUserData(): Promise<AppStateData> {
 
   // 2. Extended tables (check if available in Supabase)
   try {
-    const [mRes, bRes, sRes, hRes, hlRes, gRes, cRes, aRes] = await Promise.all([
+    const [mRes, bRes, sRes, hRes, hlRes, gRes, cRes, aRes, schRes, labRes, resRes] = await Promise.all([
       supabase.from("milestones").select("*").order("created_at", { ascending: true }),
       supabase.from("budgets").select("*"),
       supabase.from("savings_goals").select("*").order("created_at", { ascending: false }),
@@ -118,7 +247,10 @@ export async function fetchAllUserData(): Promise<AppStateData> {
       supabase.from("habit_logs").select("*"),
       supabase.from("goals").select("*").order("created_at", { ascending: false }),
       supabase.from("calendar_events").select("*").order("event_date", { ascending: true }),
-      supabase.from("academic_modules").select("*").order("created_at", { ascending: true })
+      supabase.from("academic_modules").select("*").order("created_at", { ascending: true }),
+      supabase.from("sessions_schedule").select("*").order("start_time", { ascending: true }),
+      supabase.from("practical_labs").select("*").order("created_at", { ascending: false }),
+      supabase.from("resource_library").select("*").order("created_at", { ascending: false })
     ]);
 
     const hasError = [mRes, bRes, sRes, hRes, hlRes, gRes, cRes, aRes].some(
@@ -135,6 +267,9 @@ export async function fetchAllUserData(): Promise<AppStateData> {
       result.goals = gRes.data || [];
       result.calendarEvents = cRes.data || [];
       result.academicModules = aRes.data || [];
+      result.sessionsSchedule = (schRes.data && schRes.data.length > 0) ? schRes.data : defaultSchedule;
+      result.practicalLabs = labRes.data || [];
+      result.resourceLibrary = resRes.data || [];
     } else {
       // Fallback to local storage
       result.extendedTablesAvailable = false;
@@ -146,6 +281,9 @@ export async function fetchAllUserData(): Promise<AppStateData> {
       result.goals = getLocal("goals", []);
       result.calendarEvents = getLocal("calendarEvents", []);
       result.academicModules = getLocal("academicModules", []);
+      result.sessionsSchedule = getLocal("sessionsSchedule", defaultSchedule);
+      result.practicalLabs = getLocal("practicalLabs", []);
+      result.resourceLibrary = getLocal("resourceLibrary", []);
     }
   } catch (err) {
     result.extendedTablesAvailable = false;
@@ -157,6 +295,9 @@ export async function fetchAllUserData(): Promise<AppStateData> {
     result.goals = getLocal("goals", []);
     result.calendarEvents = getLocal("calendarEvents", []);
     result.academicModules = getLocal("academicModules", []);
+    result.sessionsSchedule = getLocal("sessionsSchedule", defaultSchedule);
+    result.practicalLabs = getLocal("practicalLabs", []);
+    result.resourceLibrary = getLocal("resourceLibrary", []);
   }
 
   return result;
@@ -179,6 +320,7 @@ export async function persistInsert<T extends Record<string, any>>(
       if (error.code === "42703") {
         const cleanRecord = { ...record };
         delete cleanRecord.focus_area;
+        delete cleanRecord.session_type;
         delete cleanRecord.project_id;
         delete cleanRecord.progress;
         delete cleanRecord.category;
@@ -219,6 +361,7 @@ export async function persistUpdate<T extends Record<string, any>>(
         if (error.code === "42703") {
           const cleanUpdates = { ...updates };
           delete cleanUpdates.focus_area;
+          delete cleanUpdates.session_type;
           delete cleanUpdates.project_id;
           delete cleanUpdates.progress;
           const retry = await client.update(cleanUpdates).eq("id", id);
@@ -261,4 +404,3 @@ export async function persistDelete(
   setLocal(table, current.filter(item => item.id !== id));
   return { success: true };
 }
-

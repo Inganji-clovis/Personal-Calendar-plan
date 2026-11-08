@@ -10,7 +10,7 @@ A professional, full-stack personal management system built for **Inganji** with
    - Live KPI scorecards: Tasks completed vs overdue, active projects, total IT study hours, and available balance in Rwandan Francs (RWF).
    - Monthly cashflow overview (Income vs Expenses in RWF).
    - Priority and urgent deliverables with 1-click status completion toggle.
-   - Dedicated focus area shortcuts (Iwacu Studio, VAX2040, University of Kigali).
+   - Dedicated focus area shortcuts (Iwacu Studio, Home Session, University of Kigali).
    - Daily habits check-in tracker.
 
 2. **Tasks Management**:
@@ -34,7 +34,7 @@ A professional, full-stack personal management system built for **Inganji** with
 
 5. **Work & University Dedicated Command**:
    - **Iwacu Studio**: Creative production pipeline, video/audio shoots, media deliverables, campaigns.
-   - **VAX2040**: Software engineering roadmap, architecture specs, sprint backlog, epics.
+   - **Home Session**: Software engineering roadmap, architecture specs, sprint backlog, epics.
    - **University of Kigali (UoK)**: Enrolled academic course modules, course codes, credit weights, lecturers, target vs current grades, assignments, and exam deadlines.
 
 6. **Calendar & Scheduling**:

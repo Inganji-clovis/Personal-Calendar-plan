@@ -1,6 +1,6 @@
 import React from "react";
 import { X } from "lucide-react";
-import type { Task, Project, Milestone } from "@/lib/supabase";
+import type { Task, Project, Milestone, ResourceItem } from "@/lib/supabase";
 
 interface ModalsProps {
   modalType: string | null;
@@ -11,6 +11,7 @@ interface ModalsProps {
   activeProjectIdForMilestone: string | null;
   calendarSelectedDate: string | null;
   preselectedFocusArea: string | null;
+  editingResource?: ResourceItem | null;
 }
 
 export const Modals: React.FC<ModalsProps> = ({
@@ -21,7 +22,8 @@ export const Modals: React.FC<ModalsProps> = ({
   editingProject,
   activeProjectIdForMilestone,
   calendarSelectedDate,
-  preselectedFocusArea
+  preselectedFocusArea,
+  editingResource
 }) => {
   if (!modalType) return null;
 
@@ -103,7 +105,7 @@ export const Modals: React.FC<ModalsProps> = ({
                 >
                   <option value="General">General</option>
                   <option value="Iwacu Studio">Iwacu Studio</option>
-                  <option value="VAX2040">VAX2040</option>
+                  <option value="Home Session">Home Session</option>
                   <option value="University of Kigali">University of Kigali</option>
                 </select>
               </label>
@@ -130,7 +132,7 @@ export const Modals: React.FC<ModalsProps> = ({
               <input
                 name="name"
                 defaultValue={editingProject?.name || ""}
-                placeholder="e.g. VAX2040 Core Architecture v1"
+                placeholder="e.g. Home Session Core Architecture v1"
                 required
               />
             </label>
@@ -163,7 +165,7 @@ export const Modals: React.FC<ModalsProps> = ({
                 >
                   <option value="General">General</option>
                   <option value="Iwacu Studio">Iwacu Studio</option>
-                  <option value="VAX2040">VAX2040</option>
+                  <option value="Home Session">Home Session</option>
                   <option value="University of Kigali">University of Kigali</option>
                 </select>
               </label>
@@ -493,7 +495,7 @@ export const Modals: React.FC<ModalsProps> = ({
 
             <label>
               Goal Title *
-              <input name="title" placeholder="e.g. Deploy VAX2040 v1 Production" required />
+              <input name="title" placeholder="e.g. Deploy Home Session v1 Production" required />
             </label>
 
             <label>
@@ -573,7 +575,7 @@ export const Modals: React.FC<ModalsProps> = ({
                 <select name="category" defaultValue="University">
                   <option value="University">University Exam/Class</option>
                   <option value="Iwacu Studio">Iwacu Studio Shoot</option>
-                  <option value="VAX2040">VAX2040 Sprint Sync</option>
+                  <option value="Home Session">Home Session Sprint Sync</option>
                   <option value="Learning">IT Lab Block</option>
                   <option value="General">Personal General</option>
                 </select>
@@ -644,6 +646,154 @@ export const Modals: React.FC<ModalsProps> = ({
 
             <button className="primary full" type="submit" style={{ marginTop: 18 }}>
               Enroll Course Module
+            </button>
+          </form>
+        )}
+
+        {/* Schedule Time Block Modal */}
+        {modalType === "schedule_block" && (
+          <form onSubmit={onSubmit}>
+            <div className="modal-head">
+              <h3>Schedule Time Block</h3>
+              <button type="button" className="icon-btn" onClick={onClose}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <label>
+              Activity / Block Title *
+              <input name="title" placeholder="e.g. UV Machine Print Batch #1 or Linux Networking Lab" required />
+            </label>
+
+            <div className="form-row">
+              <label>
+                Session Environment *
+                <select name="session_type" defaultValue="home">
+                  <option value="home">Home Session (IT / Dev)</option>
+                  <option value="studio">Iwacu Studio (Production)</option>
+                  <option value="university">University of Kigali</option>
+                  <option value="general">General Life</option>
+                </select>
+              </label>
+
+              <label>
+                Date *
+                <input type="date" name="scheduled_date" defaultValue={todayStr} required />
+              </label>
+            </div>
+
+            <div className="form-row">
+              <label>
+                Start Time *
+                <input type="time" name="start_time" defaultValue="09:00" required />
+              </label>
+
+              <label>
+                End Time *
+                <input type="time" name="end_time" defaultValue="11:00" required />
+              </label>
+            </div>
+
+            <label>
+              Description & Specific Goals
+              <textarea name="description" placeholder="Objectives, checklist, tools needed..." rows={3} />
+            </label>
+
+            <button className="primary full" type="submit" style={{ marginTop: 18 }}>
+              Add Scheduled Block
+            </button>
+          </form>
+        )}
+
+        {/* Resource Item Modal (Create or Edit) */}
+        {(modalType === "resource" || modalType === "edit_resource") && (
+          <form onSubmit={onSubmit}>
+            <div className="modal-head">
+              <h3>{modalType === "edit_resource" ? "Edit Resource" : "Add Resource to Library"}</h3>
+              <button type="button" className="icon-btn" onClick={onClose}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <label>
+              Resource Title *
+              <input
+                name="title"
+                defaultValue={editingResource?.title || ""}
+                placeholder="e.g. Debian Administrator's Handbook or UV Printer Calibration"
+                required
+              />
+            </label>
+
+            <div className="form-row">
+              <label>
+                Format / Type *
+                <select name="resource_type" defaultValue={editingResource?.resource_type || "documentation"}>
+                  <option value="documentation">Documentation</option>
+                  <option value="pdf">PDF Document</option>
+                  <option value="tutorial">Tutorial</option>
+                  <option value="video_link">Video Link</option>
+                  <option value="snippet">Code Snippet</option>
+                  <option value="ebook">E-Book</option>
+                  <option value="website">Website</option>
+                  <option value="note">Note / Summary</option>
+                  <option value="tool">Tool / Utility</option>
+                </select>
+              </label>
+
+              <label>
+                Related Session *
+                <select name="related_session" defaultValue={editingResource?.related_session || "home"}>
+                  <option value="home">Home Session (IT / Dev)</option>
+                  <option value="studio">Iwacu Studio (Production / Print)</option>
+                  <option value="university">University of Kigali (Academics)</option>
+                  <option value="general">General</option>
+                </select>
+              </label>
+            </div>
+
+            <div className="form-row">
+              <label>
+                Category
+                <input
+                  name="category"
+                  defaultValue={editingResource?.category || "IT & Engineering"}
+                  placeholder="e.g. Linux, Graphic Design, Cloud, Networking"
+                />
+              </label>
+
+              <label>
+                Resource URL (optional)
+                <input
+                  type="url"
+                  name="url"
+                  defaultValue={editingResource?.url || ""}
+                  placeholder="https://example.com/docs"
+                />
+              </label>
+            </div>
+
+            <label>
+              Tags (comma-separated)
+              <input
+                name="tags"
+                defaultValue={editingResource?.tags || ""}
+                placeholder="e.g. debian, bash, server, cli"
+              />
+            </label>
+
+            <label>
+              Notes & Description
+              <textarea
+                name="description"
+                defaultValue={editingResource?.description || ""}
+                placeholder="Key takeaways, purpose, or reference snippets..."
+                rows={3}
+              />
+            </label>
+
+            <button className="primary full" type="submit" style={{ marginTop: 18 }}>
+              {modalType === "edit_resource" ? "Save Changes" : "Save to Resource Library"}
             </button>
           </form>
         )}

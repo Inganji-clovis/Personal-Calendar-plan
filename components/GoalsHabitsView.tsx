@@ -191,7 +191,7 @@ export const GoalsHabitsView: React.FC<GoalsHabitsViewProps> = ({
           <div className="empty">
             <Target size={28} />
             <b>No goals established yet</b>
-            <p className="muted">Define target milestones like "Deploy VAX2040 v1", "Achieve 3.8 GPA at UoK", or "Save 1,000,000 RWF".</p>
+            <p className="muted">Define target milestones like "Deploy Home Session v1", "Achieve 3.8 GPA at UoK", or "Save 1,000,000 RWF".</p>
             <button className="primary" onClick={onOpenCreateGoal} style={{ marginTop: 10 }}>
               <Plus size={14} /> Define First Goal
             </button>

@@ -35,7 +35,7 @@ export const WorkUniversityView: React.FC<WorkUniversityViewProps> = ({
   onDeleteModule,
   onToggleTaskStatus
 }) => {
-  const [activeTab, setActiveTab] = useState<"Iwacu Studio" | "VAX2040" | "University of Kigali">("Iwacu Studio");
+  const [activeTab, setActiveTab] = useState<"Iwacu Studio" | "Home Session" | "University of Kigali">("Iwacu Studio");
 
   // Filter tasks and projects by focus area
   const currentTasks = tasks.filter(
@@ -52,7 +52,7 @@ export const WorkUniversityView: React.FC<WorkUniversityViewProps> = ({
           <p className="eyebrow">STRATEGIC DOMAINS & INSTITUTIONS</p>
           <h2>Work & University Command</h2>
           <p className="muted">
-            Specialized tracking for Iwacu Studio production, VAX2040 software engineering, and University of Kigali academics.
+            Specialized tracking for Iwacu Studio production, Home Session software engineering, and University of Kigali academics.
           </p>
         </div>
       </div>
@@ -67,11 +67,11 @@ export const WorkUniversityView: React.FC<WorkUniversityViewProps> = ({
           <span>Iwacu Studio</span>
         </button>
         <button
-          className={`tab-btn ${activeTab === "VAX2040" ? "active" : ""}`}
-          onClick={() => setActiveTab("VAX2040")}
+          className={`tab-btn ${activeTab === "Home Session" ? "active" : ""}`}
+          onClick={() => setActiveTab("Home Session")}
         >
           <Activity size={16} />
-          <span>VAX2040</span>
+          <span>Home Session</span>
         </button>
         <button
           className={`tab-btn ${activeTab === "University of Kigali" ? "active" : ""}`}
@@ -176,8 +176,8 @@ export const WorkUniversityView: React.FC<WorkUniversityViewProps> = ({
         </div>
       )}
 
-      {/* Tab 2: VAX2040 */}
-      {activeTab === "VAX2040" && (
+      {/* Tab 2: Home Session */}
+      {activeTab === "Home Session" && (
         <div>
           <div className="panel" style={{ background: "radial-gradient(ellipse at top left, #0e273a 0%, #0e141b 70%)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 14 }}>
@@ -185,16 +185,16 @@ export const WorkUniversityView: React.FC<WorkUniversityViewProps> = ({
                 <span className="badge focus" style={{ marginBottom: 8, background: "#13283c", color: "#38bdf8" }}>
                   SOFTWARE ENGINEERING & INNOVATION
                 </span>
-                <h3 style={{ fontSize: 22, marginTop: 4 }}>VAX2040</h3>
+                <h3 style={{ fontSize: 22, marginTop: 4 }}>Home Session</h3>
                 <p className="muted" style={{ maxWidth: 600, marginTop: 4 }}>
                   System architecture, software product development, technical roadmap, API services, and sprint execution.
                 </p>
               </div>
               <div style={{ display: "flex", gap: 8 }}>
-                <button className="secondary" onClick={() => onOpenCreateProject("VAX2040")}>
+                <button className="secondary" onClick={() => onOpenCreateProject("Home Session")}>
                   <Plus size={14} /> New Epic / Repo
                 </button>
-                <button className="primary" onClick={() => onOpenCreateTask("VAX2040")}>
+                <button className="primary" onClick={() => onOpenCreateTask("Home Session")}>
                   <Plus size={14} /> Add Sprint Task
                 </button>
               </div>
@@ -212,8 +212,8 @@ export const WorkUniversityView: React.FC<WorkUniversityViewProps> = ({
               {currentTasks.length === 0 ? (
                 <div className="empty">
                   <CheckCircle2 size={24} />
-                  <p>No active tasks in VAX2040 sprint backlog.</p>
-                  <button className="secondary" onClick={() => onOpenCreateTask("VAX2040")} style={{ marginTop: 8 }}>
+                  <p>No active tasks in Home Session sprint backlog.</p>
+                  <button className="secondary" onClick={() => onOpenCreateTask("Home Session")} style={{ marginTop: 8 }}>
                     <Plus size={13} /> Add Sprint Task
                   </button>
                 </div>
@@ -246,8 +246,8 @@ export const WorkUniversityView: React.FC<WorkUniversityViewProps> = ({
               {currentProjects.length === 0 ? (
                 <div className="empty">
                   <FolderKanban size={24} />
-                  <p>No active epics in VAX2040.</p>
-                  <button className="secondary" onClick={() => onOpenCreateProject("VAX2040")} style={{ marginTop: 8 }}>
+                  <p>No active epics in Home Session.</p>
+                  <button className="secondary" onClick={() => onOpenCreateProject("Home Session")} style={{ marginTop: 8 }}>
                     <Plus size={13} /> Create Epic
                   </button>
                 </div>

@@ -1,14 +1,16 @@
 -- ==============================================================================
--- INGANJI LIFE OS - Database Schema Extension & Safety Updates
--- Safe, idempotent script. Does not drop or recreate existing tables.
+-- INGANJI LIFE OS - Complete Production Database Schema & Security Updates
+-- Safe, idempotent script. Does not drop, truncate or recreate existing tables.
 -- Run this in your Supabase SQL Editor: Dashboard -> SQL Editor -> New Query
 -- ==============================================================================
 
--- 1. Safely enhance existing core tables with optional helper columns
+-- 1. Safely enhance existing core tables with session and helper columns
 ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS focus_area text DEFAULT 'General';
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS session_type text DEFAULT 'home';
 ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS project_id uuid REFERENCES public.projects(id) ON DELETE SET NULL;
 
 ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS focus_area text DEFAULT 'General';
+ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS session_type text DEFAULT 'home';
 ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS progress integer DEFAULT 0;
 
 ALTER TABLE public.learning_records ADD COLUMN IF NOT EXISTS category text DEFAULT 'IT Roadmap';
@@ -127,8 +129,68 @@ CREATE TABLE IF NOT EXISTS public.notifications (
 );
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 
+-- 9. Smart Daily Planner & Session Time Blocks
+CREATE TABLE IF NOT EXISTS public.sessions_schedule (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL DEFAULT auth.uid(),
+  session_type text NOT NULL CHECK (session_type IN ('home', 'studio', 'university')),
+  title text NOT NULL,
+  start_time text NOT NULL,
+  end_time text NOT NULL,
+  scheduled_date date NOT NULL,
+  why_it_matters text,
+  status text NOT NULL DEFAULT 'scheduled' CHECK (status IN ('scheduled', 'in_progress', 'completed', 'missed', 'rescheduled')),
+  priority text NOT NULL DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
+  notes text,
+  created_at timestamptz DEFAULT now()
+);
+ALTER TABLE public.sessions_schedule ENABLE ROW LEVEL SECURITY;
+
+-- 10. Practical Laboratory Notebooks
+CREATE TABLE IF NOT EXISTS public.practical_labs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL DEFAULT auth.uid(),
+  title text NOT NULL,
+  discipline text NOT NULL,
+  topic text NOT NULL,
+  difficulty text NOT NULL DEFAULT 'intermediate' CHECK (difficulty IN ('beginner', 'intermediate', 'advanced')),
+  learning_objectives text,
+  required_tools text,
+  prerequisites text,
+  step_by_step text,
+  commands_snippets text,
+  config_examples text,
+  errors_encountered text,
+  troubleshooting_steps text,
+  solutions text,
+  results text,
+  lessons_learned text,
+  personal_notes text,
+  evidence_url text,
+  status text NOT NULL DEFAULT 'not_started' CHECK (status IN ('not_started', 'in_progress', 'completed', 'needs_improvement')),
+  created_at timestamptz DEFAULT now()
+);
+ALTER TABLE public.practical_labs ENABLE ROW LEVEL SECURITY;
+
+-- 11. Central Knowledge & Resource Library
+CREATE TABLE IF NOT EXISTS public.resource_library (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL DEFAULT auth.uid(),
+  title text NOT NULL,
+  resource_type text NOT NULL CHECK (resource_type IN ('pdf', 'document', 'video_link', 'ebook', 'website', 'documentation', 'tutorial', 'snippet', 'tool', 'note')),
+  url text,
+  category text NOT NULL DEFAULT 'General',
+  tags text,
+  description text,
+  related_discipline text,
+  related_session text CHECK (related_session IN ('home', 'studio', 'university', 'general')),
+  is_favorite boolean DEFAULT false,
+  created_at timestamptz DEFAULT now()
+);
+ALTER TABLE public.resource_library ENABLE ROW LEVEL SECURITY;
+
 -- ==============================================================================
--- 9. Secure Row Level Security Policies
+-- 12. Secure Row Level Security Policies
 -- Ensures each user can only view, insert, update and delete their own records.
 -- ==============================================================================
 
@@ -198,5 +260,19 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'notifications' AND policyname = 'Users can manage their own notifications') THEN
     CREATE POLICY "Users can manage their own notifications" ON public.notifications FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
   END IF;
-END $$;
 
+  -- Sessions Schedule
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'sessions_schedule' AND policyname = 'Users can manage their own sessions schedule') THEN
+    CREATE POLICY "Users can manage their own sessions schedule" ON public.sessions_schedule FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+  END IF;
+
+  -- Practical Labs
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'practical_labs' AND policyname = 'Users can manage their own practical labs') THEN
+    CREATE POLICY "Users can manage their own practical labs" ON public.practical_labs FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+  END IF;
+
+  -- Resource Library
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'resource_library' AND policyname = 'Users can manage their own resource library') THEN
+    CREATE POLICY "Users can manage their own resource library" ON public.resource_library FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+  END IF;
+END $$;

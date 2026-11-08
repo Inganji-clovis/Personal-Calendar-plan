@@ -164,7 +164,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
         >
           <option value="all">All Focus Areas</option>
           <option value="Iwacu Studio">Iwacu Studio</option>
-          <option value="VAX2040">VAX2040</option>
+          <option value="Home Session">Home Session</option>
           <option value="University of Kigali">University of Kigali</option>
           <option value="General">General</option>
         </select>

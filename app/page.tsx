@@ -38,7 +38,13 @@ import { GoalsHabitsView } from "@/components/GoalsHabitsView";
 import { FinanceView } from "@/components/FinanceView";
 import { ReportsView } from "@/components/ReportsView";
 import { NotificationsSettingsView } from "@/components/NotificationsSettingsView";
+import { SmartDailyPlannerView } from "@/components/SmartDailyPlannerView";
+import { ITLearningHubView } from "@/components/ITLearningHubView";
+import { PracticalLabsView } from "@/components/PracticalLabsView";
+import { ResourceLibraryView } from "@/components/ResourceLibraryView";
+import { AIAssistantView } from "@/components/AIAssistantView";
 import { Modals } from "@/components/Modals";
+import type { SessionType, DailyScheduleItem, PracticalLab, ResourceItem } from "@/lib/supabase";
 
 export default function Home() {
   const [user, setUser] = useState<User | null>(null);
@@ -54,9 +60,13 @@ export default function Home() {
   const [modalType, setModalType] = useState<string | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [editingResource, setEditingResource] = useState<ResourceItem | null>(null);
   const [activeProjectIdForMilestone, setActiveProjectIdForMilestone] = useState<string | null>(null);
   const [calendarSelectedDate, setCalendarSelectedDate] = useState<string | null>(null);
   const [preselectedFocusArea, setPreselectedFocusArea] = useState<string | null>(null);
+
+  // Active Life Environment Session
+  const [activeSession, setActiveSession] = useState<SessionType>("home");
 
   // Auth form state
   const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
@@ -79,6 +89,9 @@ export default function Home() {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [academicModules, setAcademicModules] = useState<AcademicModule[]>([]);
+  const [sessionsSchedule, setSessionsSchedule] = useState<DailyScheduleItem[]>([]);
+  const [practicalLabs, setPracticalLabs] = useState<PracticalLab[]>([]);
+  const [resourceLibrary, setResourceLibrary] = useState<ResourceItem[]>([]);
   const [extendedInCloud, setExtendedInCloud] = useState(false);
 
   // Session check
@@ -112,6 +125,9 @@ export default function Home() {
     setGoals(data.goals);
     setCalendarEvents(data.calendarEvents);
     setAcademicModules(data.academicModules);
+    setSessionsSchedule(data.sessionsSchedule || []);
+    setPracticalLabs(data.practicalLabs || []);
+    setResourceLibrary(data.resourceLibrary || []);
     setExtendedInCloud(data.extendedTablesAvailable);
   }, []);
 
@@ -328,11 +344,47 @@ export default function Home() {
         current_grade: fd.get("current_grade") || null
       };
       await persistInsert("academic_modules", payload, extendedInCloud);
+    } else if (modalType === "schedule_block") {
+      const payload: any = {
+        title: fd.get("title"),
+        session_type: fd.get("session_type") || activeSession,
+        scheduled_date: fd.get("scheduled_date") || fd.get("schedule_date") || new Date().toISOString().slice(0, 10),
+        start_time: fd.get("start_time") || "09:00",
+        end_time: fd.get("end_time") || "10:00",
+        description: fd.get("description") || null,
+        status: "scheduled",
+        is_recurring: false
+      };
+      await persistInsert("sessions_schedule", payload, extendedInCloud);
+    } else if (modalType === "resource") {
+      const payload: any = {
+        title: fd.get("title"),
+        resource_type: fd.get("resource_type") || "documentation",
+        related_session: fd.get("related_session") || activeSession,
+        category: fd.get("category") || "IT & Engineering",
+        url: fd.get("url") || null,
+        tags: fd.get("tags") || null,
+        description: fd.get("description") || null,
+        is_favorite: false
+      };
+      await persistInsert("resource_library", payload, extendedInCloud);
+    } else if (modalType === "edit_resource" && editingResource) {
+      const updates: any = {
+        title: fd.get("title"),
+        resource_type: fd.get("resource_type") || "documentation",
+        related_session: fd.get("related_session") || activeSession,
+        category: fd.get("category") || "IT & Engineering",
+        url: fd.get("url") || null,
+        tags: fd.get("tags") || null,
+        description: fd.get("description") || null
+      };
+      await persistUpdate("resource_library", editingResource.id, updates);
     }
 
     setModalType(null);
     setEditingTask(null);
     setEditingProject(null);
+    setEditingResource(null);
     setActiveProjectIdForMilestone(null);
     loadData();
   }
@@ -458,6 +510,78 @@ export default function Home() {
     }
   };
 
+  // Schedule handlers
+  const handleUpdateBlockStatus = async (
+    id: string,
+    status: DailyScheduleItem["status"]
+  ) => {
+    await persistUpdate("sessions_schedule", id, { status });
+    setSessionsSchedule((prev) =>
+      prev.map((b) => (b.id === id ? { ...b, status } : b))
+    );
+  };
+
+  const handleRescheduleBlock = async (
+    id: string,
+    newDate: string,
+    newStart: string,
+    newEnd: string
+  ) => {
+    await persistUpdate("sessions_schedule", id, {
+      scheduled_date: newDate,
+      start_time: newStart,
+      end_time: newEnd,
+      status: "scheduled",
+    });
+    setSessionsSchedule((prev) =>
+      prev.map((b) =>
+        b.id === id
+          ? { ...b, scheduled_date: newDate, start_time: newStart, end_time: newEnd, status: "scheduled" }
+          : b
+      )
+    );
+  };
+
+  const handleDeleteBlock = async (id: string) => {
+    if (confirm("Remove this scheduled time block?")) {
+      await persistDelete("sessions_schedule", id);
+      setSessionsSchedule((prev) => prev.filter((b) => b.id !== id));
+    }
+  };
+
+  // Practical Lab handlers
+  const handleAddLab = async (newLab: Partial<PracticalLab>) => {
+    await persistInsert("practical_labs", newLab, extendedInCloud);
+    loadData();
+  };
+
+  const handleUpdateLab = async (lab: PracticalLab) => {
+    await persistUpdate("practical_labs", lab.id, lab);
+    loadData();
+  };
+
+  const handleDeleteLab = async (id: string) => {
+    if (confirm("Delete this practical lab notebook entry?")) {
+      await persistDelete("practical_labs", id);
+      loadData();
+    }
+  };
+
+  // Resource Library handlers
+  const handleToggleResourceFavorite = async (id: string, isFavorite: boolean) => {
+    await persistUpdate("resource_library", id, { is_favorite: isFavorite });
+    setResourceLibrary((prev) =>
+      prev.map((r) => (r.id === id ? { ...r, is_favorite: isFavorite } : r))
+    );
+  };
+
+  const handleDeleteResource = async (id: string) => {
+    if (confirm("Delete this saved resource?")) {
+      await persistDelete("resource_library", id);
+      setResourceLibrary((prev) => prev.filter((r) => r.id !== id));
+    }
+  };
+
   // Loading spinner
   if (checkingAuth) {
     return (
@@ -479,7 +603,7 @@ export default function Home() {
             INGANJI <span>LIFE OS</span>
           </h1>
           <p className="muted">
-            Executive management for your engineering, Iwacu Studio, VAX2040, University of Kigali academics, and RWF finances.
+            Executive management for your engineering, Iwacu Studio, Home Session, University of Kigali academics, and RWF finances.
           </p>
 
           {!isSupabaseConfigured() && (
@@ -559,6 +683,8 @@ export default function Home() {
         onSignOut={handleSignOut}
         tasksCount={tasksCount}
         notificationsCount={computedAlerts.length}
+        activeSession={activeSession}
+        onSelectSession={setActiveSession}
       />
 
       {/* Main Workspace Area */}
@@ -583,10 +709,27 @@ export default function Home() {
               transactions={transactions}
               habits={habits}
               habitLogs={habitLogs}
+              schedule={sessionsSchedule}
+              activeSession={activeSession}
               onNavigate={setSection}
               onOpenModal={setModalType}
               onToggleTaskStatus={handleToggleTaskStatus}
               onToggleHabitToday={handleToggleHabitToday}
+              onSelectSession={setActiveSession}
+            />
+          )}
+
+          {section === "Smart Planner" && (
+            <SmartDailyPlannerView
+              schedule={sessionsSchedule}
+              activeSession={activeSession}
+              onSelectSession={setActiveSession}
+              onOpenCreateScheduleModal={() => setModalType("schedule_block")}
+              onUpdateScheduleStatus={handleUpdateBlockStatus}
+              onRescheduleItem={(item) =>
+                handleRescheduleBlock(item.id, item.scheduled_date, item.start_time, item.end_time)
+              }
+              onAskAI={() => setSection("AI Assistant")}
             />
           )}
 
@@ -630,12 +773,52 @@ export default function Home() {
             />
           )}
 
-          {section === "Learning" && (
-            <LearningView
+          {(section === "IT Learning Hub" || section === "Learning") && (
+            <ITLearningHubView
               learning={learning}
+              onOpenLogHoursModal={() => setModalType("learning")}
+              onOpenCreateLabModal={() => setSection("Practical Labs")}
+              onAskAI={() => setSection("AI Assistant")}
+            />
+          )}
+
+          {section === "Practical Labs" && (
+            <PracticalLabsView
+              labs={practicalLabs}
               searchQuery={searchQuery}
-              onOpenCreateModal={() => setModalType("learning")}
-              onDeleteRecord={handleDeleteLearning}
+              onOpenCreateLabModal={() => setModalType("schedule_block")}
+              onUpdateLabStatus={async (id, status) => {
+                await persistUpdate("practical_labs", id, { status });
+                setPracticalLabs(prev => prev.map(l => l.id === id ? { ...l, status } : l));
+              }}
+              onDeleteLab={handleDeleteLab}
+            />
+          )}
+
+          {section === "Resource Library" && (
+            <ResourceLibraryView
+              resources={resourceLibrary}
+              activeSession={activeSession}
+              onAddResource={() => {
+                setEditingResource(null);
+                setModalType("resource");
+              }}
+              onEditResource={(res) => {
+                setEditingResource(res);
+                setModalType("edit_resource");
+              }}
+              onDeleteResource={handleDeleteResource}
+              onToggleFavorite={handleToggleResourceFavorite}
+            />
+          )}
+
+          {section === "AI Assistant" && (
+            <AIAssistantView
+              activeSession={activeSession}
+              tasks={tasks}
+              projects={projects}
+              schedule={sessionsSchedule}
+              transactions={transactions}
             />
           )}
 
@@ -739,12 +922,14 @@ export default function Home() {
           setModalType(null);
           setEditingTask(null);
           setEditingProject(null);
+          setEditingResource(null);
           setActiveProjectIdForMilestone(null);
           setPreselectedFocusArea(null);
         }}
         onSubmit={handleModalSubmit}
         editingTask={editingTask}
         editingProject={editingProject}
+        editingResource={editingResource}
         activeProjectIdForMilestone={activeProjectIdForMilestone}
         calendarSelectedDate={calendarSelectedDate}
         preselectedFocusArea={preselectedFocusArea}

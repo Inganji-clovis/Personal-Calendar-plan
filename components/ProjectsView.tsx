@@ -64,7 +64,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             <b>No projects found</b>
             <p className="muted">
               {projects.length === 0
-                ? "Start by creating your first project for Iwacu Studio, VAX2040 or University of Kigali."
+                ? "Start by creating your first project for Iwacu Studio, Home Session or University of Kigali."
                 : "No projects match your search."}
             </p>
             <button className="primary" onClick={onOpenCreateModal} style={{ marginTop: 12 }}>

@@ -33,9 +33,10 @@ export const isSupabaseConfigured = (): boolean => {
 };
 
 // Data models
+export type SessionType = "home" | "studio" | "university";
+export type FocusArea = "Home Session" | "Iwacu Studio" | "University of Kigali" | "General";
 export type TaskPriority = "low" | "medium" | "high" | "urgent";
 export type TaskStatus = "pending" | "in_progress" | "completed" | "cancelled";
-export type FocusArea = "Iwacu Studio" | "VAX2040" | "University of Kigali" | "General";
 
 export interface Task {
   id: string;
@@ -46,6 +47,7 @@ export interface Task {
   priority: TaskPriority;
   due_date: string | null;
   focus_area?: FocusArea | string;
+  session_type?: SessionType | string;
   project_id?: string | null;
   created_at?: string;
 }
@@ -61,6 +63,7 @@ export interface Project {
   start_date: string | null;
   end_date: string | null;
   focus_area?: FocusArea | string;
+  session_type?: SessionType | string;
   progress?: number;
   created_at?: string;
 }
@@ -156,7 +159,7 @@ export interface CalendarEvent {
   event_date: string; // YYYY-MM-DD
   start_time: string | null; // HH:mm
   end_time: string | null;
-  category: "University" | "Iwacu Studio" | "VAX2040" | "Learning" | "General";
+  category: "University" | "Iwacu Studio" | "Home Session" | "Learning" | "General";
   location: string | null;
   created_at?: string;
 }
@@ -183,4 +186,58 @@ export interface NotificationItem {
   is_read: boolean;
   link?: string;
   created_at: string;
+}
+
+export interface DailyScheduleItem {
+  id: string;
+  user_id?: string;
+  session_type: SessionType;
+  title: string;
+  start_time: string; // "09:00"
+  end_time: string;   // "17:00"
+  scheduled_date: string; // "YYYY-MM-DD"
+  why_it_matters?: string | null;
+  status: "scheduled" | "in_progress" | "completed" | "missed" | "rescheduled";
+  priority: TaskPriority;
+  notes?: string | null;
+  created_at?: string;
+}
+
+export interface PracticalLab {
+  id: string;
+  user_id?: string;
+  title: string;
+  discipline: string;
+  topic: string;
+  difficulty: "beginner" | "intermediate" | "advanced";
+  learning_objectives?: string | null;
+  required_tools?: string | null;
+  prerequisites?: string | null;
+  step_by_step?: string | null;
+  commands_snippets?: string | null;
+  config_examples?: string | null;
+  errors_encountered?: string | null;
+  troubleshooting_steps?: string | null;
+  solutions?: string | null;
+  results?: string | null;
+  lessons_learned?: string | null;
+  personal_notes?: string | null;
+  evidence_url?: string | null;
+  status: "not_started" | "in_progress" | "completed" | "needs_improvement";
+  created_at?: string;
+}
+
+export interface ResourceItem {
+  id: string;
+  user_id?: string;
+  title: string;
+  resource_type: "pdf" | "document" | "video_link" | "ebook" | "website" | "documentation" | "tutorial" | "snippet" | "tool" | "note";
+  url?: string | null;
+  category: string;
+  tags?: string | null;
+  description?: string | null;
+  related_discipline?: string | null;
+  related_session?: SessionType | "general";
+  is_favorite: boolean;
+  created_at?: string;
 }
