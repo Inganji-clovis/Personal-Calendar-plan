@@ -167,7 +167,7 @@ export const ResourceLibraryView: React.FC<ResourceLibraryViewProps> = ({
               <span>{tab.id !== "all" ? TYPE_ICONS[tab.id] || "📁" : "📚"}</span>
               <span>{tab.label}</span>
               {countByType[tab.id] ? (
-                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-slate-800 text-slate-300">
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-800 text-slate-300">
                   {countByType[tab.id]}
                 </span>
               ) : null}
@@ -309,3 +309,4 @@ export const ResourceLibraryView: React.FC<ResourceLibraryViewProps> = ({
     </div>
   );
 };
+

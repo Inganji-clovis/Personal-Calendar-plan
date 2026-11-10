@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "node scripts/audit_test.mjs"
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:audit": "node scripts/audit_test.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.6.1",
@@ -21,6 +24,12 @@
     "@types/node": "^22.13.4",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
-    "typescript": "^5.7.3"
+    "autoprefixer": "^10.6.2",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.4.6",
+    "postcss": "^8.5.32",
+    "tailwindcss": "^3.4.19",
+    "typescript": "^5.7.3",
+    "vitest": "^5.1.0"
   }
 }

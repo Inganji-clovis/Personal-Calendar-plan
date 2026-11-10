@@ -1,134 +1,149 @@
 import { NextResponse } from "next/server";
+import { verifyRequestAuth } from "@/lib/serverAuth";
+import { rateLimit, clientKey } from "@/lib/rateLimit";
+
+const MAX_PROMPT_CHARS = 4000;
+
+interface AiContext {
+  activeSession?: string;
+  currentTime?: string;
+  todayDate?: string;
+  scheduleSummary?: string[];
+  pendingTasksCount?: number;
+  topTasks?: string[];
+  activeProjectsCount?: number;
+  currentBalanceRwf?: number;
+}
+
+function buildSystemPrompt(ctx: AiContext): string {
+  const activeSession = ctx.activeSession || "Home Session";
+  const schedule = Array.isArray(ctx.scheduleSummary) ? ctx.scheduleSummary.slice(0, 8) : [];
+  const topTasks = Array.isArray(ctx.topTasks) ? ctx.topTasks.slice(0, 6) : [];
+  const balance = Number(ctx.currentBalanceRwf || 0).toLocaleString();
+
+  return `You are the executive AI Assistant and Chief Operations Advisor inside INGANJI LIFE OS, built for Inganji.
+Inganji runs his life across 3 isolated sessions:
+1. HOME SESSION: personal IT learning (6-month technical roadmap), hands-on labs, software engineering, reading.
+2. IWACU STUDIO: graphic design, print & production, laser/UV machine operation, photography, video, client deadlines.
+3. UNIVERSITY OF KIGALI: IT degree modules, timetable, assignments, exams, revision, grades.
+
+REAL USER CONTEXT (use this, never invent data):
+- Active session: ${activeSession}
+- Today: ${ctx.todayDate || "unknown"} (current time ${ctx.currentTime || "unknown"})
+- Available balance: ${balance} RWF
+- Pending tasks: ${ctx.pendingTasksCount ?? topTasks.length}
+- Active projects: ${ctx.activeProjectsCount ?? 0}
+- Today's scheduled blocks: ${schedule.length ? schedule.join(" | ") : "none scheduled yet"}
+- Priority tasks: ${topTasks.length ? topTasks.join(" | ") : "none"}
+
+RULES OF ENGAGEMENT:
+1. Never fabricate financial records, transactions, or numbers. Separate real data from estimates and state assumptions.
+2. For money-related requests, compute concrete figures from the real balance/tasks provided, show the math, and ask for confirmation before proposing a saved plan. Currency is Rwandan Francs (RWF).
+3. For "What should I do now?", answer with a short, prioritized, actionable plan tied to the active session and today's schedule.
+4. For IT learning, be technically deep and correct (Linux, SQL/PostgreSQL, networking, full-stack, cybersecurity, cloud, DevOps, hardware, AI).
+5. Address Inganji professionally, concisely and practically. Prefer short sections and bullet lists over long paragraphs.`;
+}
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    const { message, contextType, userContext } = body;
+    // 1. Authentication — block anonymous callers when auth is configured.
+    const auth = await verifyRequestAuth(request);
+    if (auth.configured && !auth.userId) {
+      return NextResponse.json({ error: "Unauthorized. Please sign in." }, { status: 401 });
+    }
 
-    if (!message || typeof message !== "string") {
+    // 2. Rate limiting — protect paid AI credits from abuse.
+    const limit = auth.userId ? 30 : 10;
+    const rl = rateLimit(clientKey(request, auth.userId), limit, 60_000);
+    if (!rl.allowed) {
       return NextResponse.json(
-        { error: "Message is required." },
-        { status: 400 }
+        { error: "Rate limit exceeded. Please wait a moment and try again." },
+        { status: 429, headers: { "Retry-After": String(Math.ceil((rl.reset - Date.now()) / 1000)) } }
       );
     }
+
+    // 3. Input validation.
+    const body = await request.json().catch(() => ({}));
+    const rawPrompt = body?.prompt ?? body?.message;
+    if (!rawPrompt || typeof rawPrompt !== "string" || !rawPrompt.trim()) {
+      return NextResponse.json({ error: "A non-empty 'prompt' is required." }, { status: 400 });
+    }
+    const prompt = rawPrompt.trim().slice(0, MAX_PROMPT_CHARS);
+    const context: AiContext = body?.context ?? body?.userContext ?? {};
 
     const geminiKey = process.env.GEMINI_API_KEY;
     const openaiKey = process.env.OPENAI_API_KEY;
 
-    // Honest reporting when AI provider is not yet configured on server
+    // Honest reporting when AI provider is not yet configured on server.
     if (!geminiKey && !openaiKey) {
       return NextResponse.json({
         configured: false,
-        reply: "AI Provider API key not detected on the server. To enable live AI intelligence across INGANJI LIFE OS:\n\n1. Get a free Google Gemini API key at https://aistudio.google.com/ (or an OpenAI key).\n2. Add `GEMINI_API_KEY=your_key_here` to your `.env.local` file (and in Vercel Project Settings -> Environment Variables).\n3. Redeploy or restart your local server.\n\nOnce configured, I will directly evaluate your real-time Home, Iwacu Studio, and University sessions, plan your daily hours, and analyze your RWF finances.",
+        reply:
+          "AI provider API key not detected on the server. To enable live AI intelligence across INGANJI LIFE OS:\n\n1. Get a free Google Gemini API key at https://aistudio.google.com/ (or an OpenAI key).\n2. Add `GEMINI_API_KEY=your_key_here` to your `.env.local` (and in Vercel → Environment Variables).\n3. Restart the server.\n\nOnce configured, I will evaluate your real Home, Iwacu Studio, and University sessions and analyze your RWF finances.",
         setupGuide: {
-          recommended: "Google Gemini 1.5 Flash (Free tier available)",
+          recommended: "Google Gemini Flash (free tier available)",
           keyEnvVar: "GEMINI_API_KEY",
-          portalUrl: "https://aistudio.google.com/"
-        }
+          portalUrl: "https://aistudio.google.com/",
+        },
       });
     }
 
-    // Build context-aware prompt using actual user workspace data
-    const activeSession = userContext?.activeSession || "Home Session";
-    const currentActivity = userContext?.currentActivity || "Unscheduled";
-    const totalIncome = userContext?.finance?.totalIncome || 0;
-    const totalExpense = userContext?.finance?.totalExpense || 0;
-    const netBalance = userContext?.finance?.netBalance || 0;
-    const pendingTasks = userContext?.pendingTasks || [];
-    const openProjects = userContext?.openProjects || [];
-    const studyHours = userContext?.studyHours || 0;
+    const systemPrompt = buildSystemPrompt(context);
 
-    const systemPrompt = `You are the executive AI Assistant and Chief Operations Advisor inside INGANJI LIFE OS, a personal management system built for Inganji.
-Inganji manages his life across 3 isolated, independent time sessions:
-1. HOME SESSION: Personal IT learning, 6-month intensive technical roadmap, practical hands-on labs, software engineering, reading, and personal responsibilities.
-2. IWACU STUDIO: Graphic design, printing & production, laser & UV machine operation, photography, video production, client deadlines, and practical technical skills.
-3. UNIVERSITY OF KIGALI: Academic degree modules (IT), lecture timetable, assignments, exams, revision, and grades.
-
-REAL USER CONTEXT:
-- Active Session: ${activeSession}
-- Current Scheduled Activity: ${currentActivity}
-- Available Financial Balance: ${Number(netBalance).toLocaleString()} RWF (Total Recorded Income: ${Number(totalIncome).toLocaleString()} RWF, Total Expenses: ${Number(totalExpense).toLocaleString()} RWF)
-- Total IT Study Hours Logged: ${studyHours} hrs
-- Pending Tasks Count: ${pendingTasks.length}
-- Active Projects Count: ${openProjects.length}
-
-RULES OF ENGAGEMENT:
-1. Never fabricate financial records, transactions, or fake numbers. Distinguish actual data from estimates.
-2. When answering financial requests (e.g. "I want to save 500,000 RWF in 6 months"), analyze the actual cashflow, calculate exact monthly requirements (~83,333 RWF/month), explain assumptions, and ask for confirmation before saving any plan.
-3. For daily execution, answer "What should I do now?" with clear, actionable advice based on his active session and current schedule.
-4. For IT learning, provide deep technical accuracy across the 14 roadmap disciplines (Linux, SQL/PostgreSQL, Networking, Full-Stack, Cybersecurity, Cloud, DevOps, Hardware, AI).
-5. Always address Inganji professionally, concisely, and practically. Currency is Rwandan Francs (RWF).`;
-
-    // 1. Google Gemini Provider
+    // 4. Provider call — never leak raw provider errors/responses to the client.
     if (geminiKey) {
       const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
-
       const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          contents: [
-            {
-              role: "user",
-              parts: [{ text: `${systemPrompt}\n\nUser Request (${contextType || "general"} context):\n${message}` }]
-            }
-          ],
-          generationConfig: {
-            temperature: 0.3,
-            maxOutputTokens: 1400
-          }
-        })
+          contents: [{ role: "user", parts: [{ text: `${systemPrompt}\n\nUser request:\n${prompt}` }] }],
+          generationConfig: { temperature: 0.3, maxOutputTokens: 1400 },
+        }),
       });
 
       if (!response.ok) {
-        const errText = await response.text();
-        return NextResponse.json(
-          { error: `Gemini API Error: ${response.statusText}`, details: errText },
-          { status: response.status }
-        );
+        console.error("[ai/chat] Gemini error", response.status, await response.text().catch(() => ""));
+        return NextResponse.json({ error: "The AI provider is temporarily unavailable. Please try again." }, { status: 502 });
       }
 
       const data = await response.json();
-      const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "No response received from AI model.";
-      return NextResponse.json({ configured: true, provider: "gemini", reply });
-    }
-
-    // 2. OpenAI Provider
-    if (openaiKey) {
-      const response = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${openaiKey}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: message }
-          ],
-          temperature: 0.3
-        })
+      const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      return NextResponse.json({
+        configured: true,
+        provider: "gemini",
+        reply: reply || "No response received from the AI model.",
       });
-
-      if (!response.ok) {
-        const errText = await response.text();
-        return NextResponse.json(
-          { error: `OpenAI API Error: ${response.statusText}`, details: errText },
-          { status: response.status }
-        );
-      }
-
-      const data = await response.json();
-      const reply = data.choices?.[0]?.message?.content || "No response received from AI model.";
-      return NextResponse.json({ configured: true, provider: "openai", reply });
     }
 
-    return NextResponse.json({ configured: false, reply: "No provider configured." });
-  } catch (err: any) {
-    return NextResponse.json(
-      { error: err.message || "Failed to process AI request." },
-      { status: 500 }
-    );
+    // openaiKey is guaranteed here.
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${openaiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: prompt },
+        ],
+        temperature: 0.3,
+      }),
+    });
+
+    if (!response.ok) {
+      console.error("[ai/chat] OpenAI error", response.status, await response.text().catch(() => ""));
+      return NextResponse.json({ error: "The AI provider is temporarily unavailable. Please try again." }, { status: 502 });
+    }
+
+    const data = await response.json();
+    const reply = data?.choices?.[0]?.message?.content;
+    return NextResponse.json({
+      configured: true,
+      provider: "openai",
+      reply: reply || "No response received from the AI model.",
+    });
+  } catch (err) {
+    console.error("[ai/chat] Unexpected error", err);
+    return NextResponse.json({ error: "Failed to process AI request." }, { status: 500 });
   }
 }

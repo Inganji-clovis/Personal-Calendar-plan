@@ -11,6 +11,7 @@ import {
   Server
 } from "lucide-react";
 import { NOTIFICATION_PROVIDERS_INFO } from "@/lib/notifications";
+import { authHeaders } from "@/lib/apiClient";
 
 export const NotificationsSettingsView: React.FC = () => {
   const [phoneNumber, setPhoneNumber] = useState("+250 788 000 000");
@@ -26,7 +27,7 @@ export const NotificationsSettingsView: React.FC = () => {
     try {
       const res = await fetch("/api/notifications/dispatch", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(await authHeaders()) },
         body: JSON.stringify({
           channel: "sms",
           to: phoneNumber,

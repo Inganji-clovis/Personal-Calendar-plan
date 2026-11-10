@@ -17,6 +17,7 @@ import {
   ChevronRight
 } from "lucide-react";
 import type { DailyScheduleItem, SessionType } from "@/lib/supabase";
+import { ROADMAP_TOTAL_DAYS, clampRoadmapDay, getRoadmapWeek } from "@/lib/careerRoadmap";
 
 interface SmartDailyPlannerViewProps {
   schedule: DailyScheduleItem[];
@@ -26,6 +27,8 @@ interface SmartDailyPlannerViewProps {
   onUpdateScheduleStatus: (id: string, status: DailyScheduleItem["status"]) => void;
   onRescheduleItem: (item: DailyScheduleItem) => void;
   onAskAI: (prompt: string) => void;
+  roadmapDay: number;
+  onSelectRoadmapDay: (day: number) => void;
 }
 
 export const SmartDailyPlannerView: React.FC<SmartDailyPlannerViewProps> = ({
@@ -35,7 +38,9 @@ export const SmartDailyPlannerView: React.FC<SmartDailyPlannerViewProps> = ({
   onOpenCreateScheduleModal,
   onUpdateScheduleStatus,
   onRescheduleItem,
-  onAskAI
+  onAskAI,
+  roadmapDay,
+  onSelectRoadmapDay
 }) => {
   const [filterSession, setFilterSession] = useState<SessionType | "all">("all");
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -102,10 +107,60 @@ export const SmartDailyPlannerView: React.FC<SmartDailyPlannerViewProps> = ({
           <p className="eyebrow">PERSONAL EXECUTION ENGINE</p>
           <h2>Smart Daily Planner</h2>
           <p className="muted">
-            Hour-by-hour time blocking, intelligent rescheduling, and active execution guidance across Home, Studio, and University.
+            Your day is generated automatically from your live tasks, deadlines and labs — review, execute, and fine-tune as needed.
           </p>
         </div>
         <div className="header-actions">
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              background: "var(--panel-alt)",
+              border: "1px solid var(--line)",
+              borderRadius: 10,
+              padding: "6px 10px"
+            }}
+            title="Career Roadmap day — drives your Studio & Home focus"
+          >
+            <span className="eyebrow" style={{ margin: 0, fontSize: 10 }}>ROADMAP DAY</span>
+            <button
+              className="icon-btn"
+              onClick={() => onSelectRoadmapDay(clampRoadmapDay(roadmapDay - 1))}
+              disabled={roadmapDay <= 1}
+              title="Previous day"
+            >
+              <ChevronRight size={14} style={{ transform: "rotate(180deg)" }} />
+            </button>
+            <input
+              type="number"
+              min={1}
+              max={ROADMAP_TOTAL_DAYS}
+              value={roadmapDay}
+              onChange={(e) => onSelectRoadmapDay(clampRoadmapDay(Number(e.target.value)))}
+              style={{
+                width: 52,
+                textAlign: "center",
+                background: "var(--panel)",
+                border: "1px solid var(--line-strong)",
+                borderRadius: 8,
+                padding: "4px 6px",
+                fontWeight: 700,
+                color: "var(--accent-light)"
+              }}
+            />
+            <button
+              className="icon-btn"
+              onClick={() => onSelectRoadmapDay(clampRoadmapDay(roadmapDay + 1))}
+              disabled={roadmapDay >= ROADMAP_TOTAL_DAYS}
+              title="Next day"
+            >
+              <ChevronRight size={14} />
+            </button>
+            <span className="muted" style={{ fontSize: 11, whiteSpace: "nowrap" }}>
+              {getRoadmapWeek(roadmapDay).title}
+            </span>
+          </div>
           <button className="secondary" onClick={() => onAskAI("Analyze my schedule for today. What should I prioritize right now and where are my bottleneck risks?")}>
             <Sparkles size={15} /> AI Schedule Analysis
           </button>
@@ -241,8 +296,11 @@ export const SmartDailyPlannerView: React.FC<SmartDailyPlannerViewProps> = ({
       <section className="panel">
         <div className="panel-head">
           <div>
-            <h3>Daily Schedule & Time Blocks ({todayStr})</h3>
-            <p className="muted">Independent scheduling for Home, Iwacu Studio, and University of Kigali</p>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <h3 style={{ margin: 0 }}>Daily Schedule & Time Blocks ({todayStr})</h3>
+              <span className="badge status-completed" style={{ fontSize: 10 }}>Auto-generated</span>
+            </div>
+            <p className="muted" style={{ marginTop: 4 }}>Built for you from Home, Iwacu Studio, and University of Kigali commitments</p>
           </div>
           <div style={{ display: "flex", gap: 6 }}>
             <button
@@ -345,3 +403,4 @@ export const SmartDailyPlannerView: React.FC<SmartDailyPlannerViewProps> = ({
     </div>
   );
 };
+

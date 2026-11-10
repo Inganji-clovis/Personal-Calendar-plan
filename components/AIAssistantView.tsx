@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { SessionType, Task, Project, DailyScheduleItem, Transaction } from "@/lib/supabase";
+import { authHeaders } from "@/lib/apiClient";
 
 interface AIAssistantViewProps {
   activeSession: SessionType;
@@ -82,7 +83,7 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
     try {
       const response = await fetch("/api/ai/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(await authHeaders()) },
         body: JSON.stringify({
           prompt: textToSend,
           context: contextPayload,
@@ -312,3 +313,4 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
     </div>
   );
 };
+

@@ -273,7 +273,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <div className="flex items-center gap-2">
                 <b>Home Session</b>
                 {activeSession === "home" && (
-                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400">CURRENT</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400">CURRENT</span>
                 )}
               </div>
               <small className="muted">IT Roadmap, hands-on Linux/Cloud labs, personal software development</small>
@@ -296,7 +296,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <div className="flex items-center gap-2">
                 <b>Iwacu Studio</b>
                 {activeSession === "studio" && (
-                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-blue-500/20 text-blue-400">CURRENT</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400">CURRENT</span>
                 )}
               </div>
               <small className="muted">Design, UV & laser machines, print production, photo/video media</small>
@@ -319,7 +319,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <div className="flex items-center gap-2">
                 <b>University of Kigali</b>
                 {activeSession === "university" && (
-                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-400">CURRENT</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-400">CURRENT</span>
                 )}
               </div>
               <small className="muted">IT curriculum, academic modules, assignments, revision & exams</small>

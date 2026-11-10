@@ -3,6 +3,7 @@ import type { User } from "@supabase/supabase-js";
 import {
   LayoutDashboard,
   CalendarClock,
+  Compass,
   CheckCircle2,
   FolderKanban,
   GraduationCap,
@@ -26,6 +27,7 @@ import { SessionType } from "@/lib/supabase";
 export type NavSection =
   | "Dashboard"
   | "Smart Planner"
+  | "Career Roadmap"
   | "Tasks"
   | "Projects"
   | "IT Learning Hub"
@@ -68,6 +70,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const mainNav: { label: NavSection; icon: any; badge?: number; badgeType?: "normal" | "danger" }[] = [
     { label: "Dashboard", icon: LayoutDashboard },
     { label: "Smart Planner", icon: CalendarClock },
+    { label: "Career Roadmap", icon: Compass },
     {
       label: "Tasks",
       icon: CheckCircle2,
@@ -116,7 +119,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="px-3 pt-2 pb-3 border-b border-slate-800/80 mb-2">
           <div className="flex items-center justify-between text-[10px] text-slate-400 font-semibold tracking-wider uppercase mb-1.5 px-1">
             <span>Life Environment</span>
-            <span className="text-[9px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-300">
+            <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300">
               {activeSession.toUpperCase()}
             </span>
           </div>
@@ -145,7 +148,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       ) : null}
 
       <p className="nav-caption">WORKSPACE & PLANNING</p>
-      {mainNav.slice(0, 7).map((item) => {
+      {mainNav.slice(0, 8).map((item) => {
         const Icon = item.icon;
         const isActive = currentSection === item.label || (item.label === "IT Learning Hub" && currentSection === "Learning");
         return (
@@ -169,7 +172,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       })}
 
       <p className="nav-caption">OPERATIONS & FINANCE</p>
-      {mainNav.slice(7).map((item) => {
+      {mainNav.slice(8).map((item) => {
         const Icon = item.icon;
         const isActive = currentSection === item.label;
         return (

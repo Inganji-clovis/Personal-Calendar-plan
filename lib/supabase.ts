@@ -11,6 +11,15 @@ const rawUrl = envUrl && envUrl.startsWith("http") ? envUrl.trim() : fallbackUrl
 const url = rawUrl.replace(/\/rest\/v1\/?$/, "").replace(/\/$/, "");
 const anonKey = envAnonKey && envAnonKey.length > 20 ? envAnonKey.trim() : fallbackKey;
 
+// Loudly surface local-only mode so nobody mistakes it for cloud sync.
+if (typeof window !== "undefined" && (url === fallbackUrl || anonKey === fallbackKey)) {
+  console.warn(
+    "[INGANJI LIFE OS] Supabase is not configured — running in LOCAL-ONLY mode. " +
+      "Changes are NOT synced to the cloud. Set NEXT_PUBLIC_SUPABASE_URL and " +
+      "NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local to enable cloud sync."
+  );
+}
+
 export const supabase = createClient(url, anonKey, {
   auth: {
     persistSession: true,

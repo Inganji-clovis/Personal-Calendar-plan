@@ -370,3 +370,4 @@ export const PracticalLabsView: React.FC<PracticalLabsViewProps> = ({
     </div>
   );
 };
+

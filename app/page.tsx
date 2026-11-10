@@ -1,29 +1,11 @@
 "use client";
 
-import React, { useEffect, useState, useMemo, useCallback } from "react";
+import React, { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import type {
-  Task,
-  Project,
-  Milestone,
-  LearningRecord,
-  Transaction,
-  Budget,
-  SavingsGoal,
-  Habit,
-  HabitLog,
-  Goal,
-  CalendarEvent,
-  AcademicModule
-} from "@/lib/supabase";
-import {
-  fetchAllUserData,
-  persistInsert,
-  persistUpdate,
-  persistDelete
-} from "@/lib/dataService";
-import { computeRealtimeAlerts, type ComputedAlert } from "@/lib/notifications";
+import type { SessionType, Task, Project, ResourceItem } from "@/lib/supabase";
+import { persistInsert, persistUpdate } from "@/lib/dataService";
+import { useWorkspaceData } from "@/hooks/useWorkspaceData";
 
 import { Sidebar, type NavSection } from "@/components/Sidebar";
 import { Topbar } from "@/components/Topbar";
@@ -31,7 +13,6 @@ import { NotificationsDrawer } from "@/components/NotificationsDrawer";
 import { DashboardView } from "@/components/DashboardView";
 import { TasksView } from "@/components/TasksView";
 import { ProjectsView } from "@/components/ProjectsView";
-import { LearningView } from "@/components/LearningView";
 import { WorkUniversityView } from "@/components/WorkUniversityView";
 import { CalendarView } from "@/components/CalendarView";
 import { GoalsHabitsView } from "@/components/GoalsHabitsView";
@@ -44,7 +25,8 @@ import { PracticalLabsView } from "@/components/PracticalLabsView";
 import { ResourceLibraryView } from "@/components/ResourceLibraryView";
 import { AIAssistantView } from "@/components/AIAssistantView";
 import { Modals } from "@/components/Modals";
-import type { SessionType, DailyScheduleItem, PracticalLab, ResourceItem } from "@/lib/supabase";
+import { CareerRoadmapView } from "@/components/CareerRoadmapView";
+import { clampRoadmapDay, loadRoadmapDay, saveRoadmapDay } from "@/lib/careerRoadmap";
 
 export default function Home() {
   const [user, setUser] = useState<User | null>(null);
@@ -68,6 +50,9 @@ export default function Home() {
   // Active Life Environment Session
   const [activeSession, setActiveSession] = useState<SessionType>("home");
 
+  // Career roadmap day (manual selector) — drives the auto-generated plan.
+  const [roadmapDay, setRoadmapDay] = useState<number>(() => loadRoadmapDay());
+
   // Auth form state
   const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
   const [authEmail, setAuthEmail] = useState("");
@@ -76,23 +61,23 @@ export default function Home() {
   const [authError, setAuthError] = useState("");
   const [authMessage, setAuthMessage] = useState("");
 
-  // Application Data State
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [milestones, setMilestones] = useState<Milestone[]>([]);
-  const [learning, setLearning] = useState<LearningRecord[]>([]);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [budgets, setBudgets] = useState<Budget[]>([]);
-  const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>([]);
-  const [habits, setHabits] = useState<Habit[]>([]);
-  const [habitLogs, setHabitLogs] = useState<HabitLog[]>([]);
-  const [goals, setGoals] = useState<Goal[]>([]);
-  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
-  const [academicModules, setAcademicModules] = useState<AcademicModule[]>([]);
-  const [sessionsSchedule, setSessionsSchedule] = useState<DailyScheduleItem[]>([]);
-  const [practicalLabs, setPracticalLabs] = useState<PracticalLab[]>([]);
-  const [resourceLibrary, setResourceLibrary] = useState<ResourceItem[]>([]);
-  const [extendedInCloud, setExtendedInCloud] = useState(false);
+  // Data + persistence layer (tasks, projects, finance, habits, schedule, labs)
+  const workspace = useWorkspaceData(user);
+  const {
+    tasks, projects, milestones, learning, transactions, budgets, savingsGoals,
+    habits, habitLogs, goals, calendarEvents, academicModules,
+    sessionsSchedule, practicalLabs, resourceLibrary, extendedInCloud,
+    loadData, computedAlerts, tasksCount,
+    handleToggleTaskStatus, handleDeleteTask,
+    handleToggleMilestone, handleDeleteProject, handleDeleteMilestone,
+    handleToggleHabitDay, handleToggleHabitToday, handleUpdateGoalProgress,
+    handleDeleteHabit, handleDeleteGoal,
+    handleUpdateSavingsAmount, handleDeleteTransaction, handleDeleteBudget,
+    handleDeleteSavingsGoal,
+    handleDeleteAcademicModule, handleDeleteCalendarEvent,
+    handleUpdateBlockStatus, handleRescheduleBlock,
+    handleDeleteLab, handleToggleResourceFavorite, handleDeleteResource
+  } = workspace;
 
   // Session check
   useEffect(() => {
@@ -109,33 +94,6 @@ export default function Home() {
 
     return () => subscription.unsubscribe();
   }, []);
-
-  // Data reload
-  const loadData = useCallback(async () => {
-    const data = await fetchAllUserData();
-    setTasks(data.tasks);
-    setProjects(data.projects);
-    setMilestones(data.milestones);
-    setLearning(data.learning);
-    setTransactions(data.transactions);
-    setBudgets(data.budgets);
-    setSavingsGoals(data.savingsGoals);
-    setHabits(data.habits);
-    setHabitLogs(data.habitLogs);
-    setGoals(data.goals);
-    setCalendarEvents(data.calendarEvents);
-    setAcademicModules(data.academicModules);
-    setSessionsSchedule(data.sessionsSchedule || []);
-    setPracticalLabs(data.practicalLabs || []);
-    setResourceLibrary(data.resourceLibrary || []);
-    setExtendedInCloud(data.extendedTablesAvailable);
-  }, []);
-
-  useEffect(() => {
-    if (user) {
-      loadData();
-    }
-  }, [user, loadData]);
 
   // Auth actions
   async function handleAuthenticate(e: React.FormEvent) {
@@ -181,42 +139,17 @@ export default function Home() {
   }
 
   async function handleSignOut() {
-    await supabase.auth.signOut();
+    await workspace.handleSignOut();
     setUser(null);
-    setTasks([]);
-    setProjects([]);
-    setMilestones([]);
-    setLearning([]);
-    setTransactions([]);
-    setBudgets([]);
-    setSavingsGoals([]);
-    setHabits([]);
-    setHabitLogs([]);
-    setGoals([]);
-    setCalendarEvents([]);
-    setAcademicModules([]);
   }
 
-  // Real-time computed alerts
-  const computedAlerts = useMemo<ComputedAlert[]>(() => {
-    return computeRealtimeAlerts({
-      tasks,
-      transactions,
-      budgets,
-      habits,
-      habitLogs,
-      calendarEvents
-    });
-  }, [tasks, transactions, budgets, habits, habitLogs, calendarEvents]);
-
-  const tasksCount = useMemo(() => {
-    const todayStr = new Date().toISOString().slice(0, 10);
-    const overdue = tasks.filter(
-      t => t.status !== "completed" && t.status !== "cancelled" && t.due_date && t.due_date < todayStr
-    ).length;
-    const open = tasks.filter(t => t.status !== "completed" && t.status !== "cancelled").length;
-    return { open, overdue };
-  }, [tasks]);
+  // Selecting a roadmap day persists it and regenerates the plan immediately.
+  function handleSelectRoadmapDay(day: number) {
+    const next = clampRoadmapDay(day);
+    setRoadmapDay(next);
+    saveRoadmapDay(next);
+    loadData();
+  }
 
   // Modal form submit handler
   async function handleModalSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -389,199 +322,6 @@ export default function Home() {
     loadData();
   }
 
-  // Interactive toggle actions
-  const handleToggleTaskStatus = async (task: Task) => {
-    const nextStatus = task.status === "completed" ? "pending" : "completed";
-    await persistUpdate("tasks", task.id, { status: nextStatus });
-    loadData();
-  };
-
-  const handleToggleMilestone = async (milestone: Milestone) => {
-    await persistUpdate("milestones", milestone.id, { completed: !milestone.completed });
-    loadData();
-  };
-
-  const handleToggleHabitDay = async (habitId: string, dateStr: string) => {
-    const existing = habitLogs.find(l => l.habit_id === habitId && l.log_date === dateStr);
-    if (existing) {
-      if (existing.completed) {
-        await persistDelete("habit_logs", existing.id);
-      } else {
-        await persistUpdate("habit_logs", existing.id, { completed: true });
-      }
-    } else {
-      await persistInsert("habit_logs", { habit_id: habitId, log_date: dateStr, completed: true }, extendedInCloud);
-    }
-    loadData();
-  };
-
-  const handleToggleHabitToday = async (habitId: string) => {
-    const todayStr = new Date().toISOString().slice(0, 10);
-    handleToggleHabitDay(habitId, todayStr);
-  };
-
-  const handleUpdateGoalProgress = async (goal: Goal, newVal: number) => {
-    const target = Number(goal.target_value) || 100;
-    const isAchieved = newVal >= target;
-    await persistUpdate("goals", goal.id, {
-      current_value: newVal,
-      status: isAchieved ? "achieved" : "in_progress"
-    });
-    loadData();
-  };
-
-  const handleUpdateSavingsAmount = async (sg: SavingsGoal, delta: number) => {
-    const current = Number(sg.current_amount || 0);
-    await persistUpdate("savings_goals", sg.id, { current_amount: current + delta });
-    loadData();
-  };
-
-  // Delete actions
-  const handleDeleteTask = async (id: string) => {
-    if (confirm("Delete this task?")) {
-      await persistDelete("tasks", id);
-      loadData();
-    }
-  };
-
-  const handleDeleteProject = async (id: string) => {
-    if (confirm("Delete this project and its milestones?")) {
-      await persistDelete("projects", id);
-      loadData();
-    }
-  };
-
-  const handleDeleteMilestone = async (id: string) => {
-    await persistDelete("milestones", id);
-    loadData();
-  };
-
-  const handleDeleteLearning = async (id: string) => {
-    if (confirm("Delete this learning record?")) {
-      await persistDelete("learning_records", id);
-      loadData();
-    }
-  };
-
-  const handleDeleteTransaction = async (id: string) => {
-    if (confirm("Delete this financial transaction?")) {
-      await persistDelete("transactions", id);
-      loadData();
-    }
-  };
-
-  const handleDeleteBudget = async (id: string) => {
-    if (confirm("Delete this budget limit?")) {
-      await persistDelete("budgets", id);
-      loadData();
-    }
-  };
-
-  const handleDeleteSavingsGoal = async (id: string) => {
-    if (confirm("Delete this savings fund?")) {
-      await persistDelete("savings_goals", id);
-      loadData();
-    }
-  };
-
-  const handleDeleteHabit = async (id: string) => {
-    if (confirm("Delete this habit?")) {
-      await persistDelete("habits", id);
-      loadData();
-    }
-  };
-
-  const handleDeleteGoal = async (id: string) => {
-    if (confirm("Delete this strategic goal?")) {
-      await persistDelete("goals", id);
-      loadData();
-    }
-  };
-
-  const handleDeleteCalendarEvent = async (id: string) => {
-    await persistDelete("calendar_events", id);
-    loadData();
-  };
-
-  const handleDeleteAcademicModule = async (id: string) => {
-    if (confirm("Remove this course module?")) {
-      await persistDelete("academic_modules", id);
-      loadData();
-    }
-  };
-
-  // Schedule handlers
-  const handleUpdateBlockStatus = async (
-    id: string,
-    status: DailyScheduleItem["status"]
-  ) => {
-    await persistUpdate("sessions_schedule", id, { status });
-    setSessionsSchedule((prev) =>
-      prev.map((b) => (b.id === id ? { ...b, status } : b))
-    );
-  };
-
-  const handleRescheduleBlock = async (
-    id: string,
-    newDate: string,
-    newStart: string,
-    newEnd: string
-  ) => {
-    await persistUpdate("sessions_schedule", id, {
-      scheduled_date: newDate,
-      start_time: newStart,
-      end_time: newEnd,
-      status: "scheduled",
-    });
-    setSessionsSchedule((prev) =>
-      prev.map((b) =>
-        b.id === id
-          ? { ...b, scheduled_date: newDate, start_time: newStart, end_time: newEnd, status: "scheduled" }
-          : b
-      )
-    );
-  };
-
-  const handleDeleteBlock = async (id: string) => {
-    if (confirm("Remove this scheduled time block?")) {
-      await persistDelete("sessions_schedule", id);
-      setSessionsSchedule((prev) => prev.filter((b) => b.id !== id));
-    }
-  };
-
-  // Practical Lab handlers
-  const handleAddLab = async (newLab: Partial<PracticalLab>) => {
-    await persistInsert("practical_labs", newLab, extendedInCloud);
-    loadData();
-  };
-
-  const handleUpdateLab = async (lab: PracticalLab) => {
-    await persistUpdate("practical_labs", lab.id, lab);
-    loadData();
-  };
-
-  const handleDeleteLab = async (id: string) => {
-    if (confirm("Delete this practical lab notebook entry?")) {
-      await persistDelete("practical_labs", id);
-      loadData();
-    }
-  };
-
-  // Resource Library handlers
-  const handleToggleResourceFavorite = async (id: string, isFavorite: boolean) => {
-    await persistUpdate("resource_library", id, { is_favorite: isFavorite });
-    setResourceLibrary((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, is_favorite: isFavorite } : r))
-    );
-  };
-
-  const handleDeleteResource = async (id: string) => {
-    if (confirm("Delete this saved resource?")) {
-      await persistDelete("resource_library", id);
-      setResourceLibrary((prev) => prev.filter((r) => r.id !== id));
-    }
-  };
-
   // Loading spinner
   if (checkingAuth) {
     return (
@@ -730,6 +470,15 @@ export default function Home() {
                 handleRescheduleBlock(item.id, item.scheduled_date, item.start_time, item.end_time)
               }
               onAskAI={() => setSection("AI Assistant")}
+              roadmapDay={roadmapDay}
+              onSelectRoadmapDay={handleSelectRoadmapDay}
+            />
+          )}
+
+          {section === "Career Roadmap" && (
+            <CareerRoadmapView
+              roadmapDay={roadmapDay}
+              onSelectDay={handleSelectRoadmapDay}
             />
           )}
 
@@ -788,8 +537,8 @@ export default function Home() {
               searchQuery={searchQuery}
               onOpenCreateLabModal={() => setModalType("schedule_block")}
               onUpdateLabStatus={async (id, status) => {
-                await persistUpdate("practical_labs", id, { status });
-                setPracticalLabs(prev => prev.map(l => l.id === id ? { ...l, status } : l));
+                const lab = practicalLabs.find((l) => l.id === id);
+                if (lab) await workspace.handleUpdateLab({ ...lab, status });
               }}
               onDeleteLab={handleDeleteLab}
             />

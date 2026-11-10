@@ -377,3 +377,4 @@ export const ITLearningHubView: React.FC<ITLearningHubViewProps> = ({
     </div>
   );
 };
+
